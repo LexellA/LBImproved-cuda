@@ -10,3 +10,14 @@ add_executable(dtw  src/include/dtw.h
                     test/dtw_unit_test.cu)
 
 target_include_directories(LBImproved-cuda PRIVATE ${PROJECT_SOURCE_DIR}/src/include)
+
+target_compile_options(LBImproved-cuda PRIVATE $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:Debug>>:-G>)
+
+
+
+enable_testing()
+
+add_executable(test_envelope test/test_envelope.cu src/Envelope.cu)
+target_include_directories(test_envelope PRIVATE ${PROJECT_SOURCE_DIR}/src/include)
+target_compile_options(test_envelope PRIVATE $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:Debug>>:-G>)
+add_test(NAME test_envelope COMMAND test_envelope)
