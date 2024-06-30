@@ -5,5 +5,8 @@ project(LBImproved-cuda LANGUAGES CXX CUDA)
 file(GLOB SOURCES ${PROJECT_SOURCE_DIR}/src/*.cu ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
 add_executable(LBImproved-cuda ${SOURCES})
+add_executable(dtw  src/include/dtw.h
+                    src/dtw.cu
+                    test/dtw_unit_test.cu)
 
 target_include_directories(LBImproved-cuda PRIVATE ${PROJECT_SOURCE_DIR}/src/include)
