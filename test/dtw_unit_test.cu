@@ -1,8 +1,4 @@
-#include <iostream>
 #include <vector>
-#include <algorithm>
-#include <cassert>
-#include <cmath>
 #include "../src/include/dtw.h"
 
 std::vector<double> get_rand_seq(uint size) {
