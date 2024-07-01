@@ -17,7 +17,8 @@ class dtw {
   enum { INF = 1000000000 ,fast = true};
   dtw(unsigned int n, unsigned int constraint);
   ~dtw();
-  double fastdynamic(const std::vector<double>& v, const std::vector<double>& w);
+  double fastdynamic(const double* v, const double* w);
+  double fastdynamic_1(const double* v, const double* w);
   double fastdynamic_origin(const std::vector<double> &v, const std::vector<double> &w);
 
  private:

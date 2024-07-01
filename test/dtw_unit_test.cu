@@ -25,8 +25,16 @@ void unit_test_1(){
   std::vector<double> y;
   for (uint k = 0; k < x.size(); ++k)
     y.push_back(x[k] + 15);
+  
+  double *d_x, *d_y;
+  checkCudaErrors(cudaMalloc(&d_x, x.size() * sizeof(double)));
+  checkCudaErrors(cudaMalloc(&d_y, y.size() * sizeof(double)));
+  checkCudaErrors(cudaMemcpy(d_x, x.data(), x.size() * sizeof(double), cudaMemcpyHostToDevice));
+  checkCudaErrors(cudaMemcpy(d_y, y.data(), y.size() * sizeof(double), cudaMemcpyHostToDevice));
+
   dtw mDTW(x.size(), 1);
-  mDTW.fastdynamic(x, y);
+  //mDTW.fastdynamic(d_x, d_y);
+  mDTW.fastdynamic_1(d_x, d_y);
   mDTW.fastdynamic_origin(x ,y);
 }
 
@@ -34,15 +42,23 @@ void unit_test_2(int size){
   std::vector<double> v ,w;
   v = get_rand_seq(size);
   w = get_rand_seq(size);
+
+  double *d_v, *d_w;
+  checkCudaErrors(cudaMalloc(&d_v, size * sizeof(double)));
+  checkCudaErrors(cudaMalloc(&d_w, size * sizeof(double)));
+  checkCudaErrors(cudaMemcpy(d_v, v.data(), size * sizeof(double), cudaMemcpyHostToDevice));
+  checkCudaErrors(cudaMemcpy(d_w, w.data(), size * sizeof(double), cudaMemcpyHostToDevice));
+
   dtw DTW(size ,1);
-  DTW.fastdynamic(v ,w);
+  //DTW.fastdynamic(d_v ,d_w);
+  DTW.fastdynamic_1(d_v ,d_w);
   DTW.fastdynamic_origin(v ,w);
 }
 
 
 int main(){
-  //unit_test_1();
-  unit_test_2(10000);
+  unit_test_1();
+  //unit_test_2(20);
 
   return 0;
 }
