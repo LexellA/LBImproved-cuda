@@ -69,7 +69,6 @@ double dtw::fastdynamic(const std::vector<double>& v, const std::vector<double>&
   // 记录开始时间
   cudaEventRecord(start);
 
-  cudaError_t err;
   double* d_v;
   checkCudaErrors(cudaMalloc(&d_v, v.size() * sizeof(double)));
   checkCudaErrors(cudaMemcpy(d_v, v.data(), v.size() * sizeof(double), cudaMemcpyHostToDevice));
@@ -126,16 +125,16 @@ double dtw::fastdynamic_origin(const std::vector<double>& v, const std::vector<d
   for (int i = 0; i < mN; ++i) {
     assert(static_cast<int>(mGamma_origin[i].size()) == mN);
     // 这里直接把constraint限制在了i的范围内，这样可以减少计算量
-    for (int j = max(0, i - mConstraint); j < min(mN, i + mConstraint + 1); ++j) {
+    for (int j = std::max(0, i - mConstraint);
+         j < std::min(mN, i + mConstraint + 1); ++j) {
       // printf("i = %d, j = %d\n",i, j);
       // 边获取边比较
       Best = INF;
       if (i > 0)
         Best = mGamma_origin[i - 1][j];
-      if (j > 0)
-        Best = min(Best, mGamma_origin[i][j - 1]);
+      if (j > 0) Best = std::min(Best, mGamma_origin[i][j - 1]);
       if ((i > 0) && (j > 0))
-        Best = min(Best, mGamma_origin[i - 1][j - 1]);
+        Best = std::min(Best, mGamma_origin[i - 1][j - 1]);
       if ((i == 0) && (j == 0))
         mGamma_origin[i][j] = fabs(v[i] - w[j]);
       else
