@@ -25,8 +25,8 @@ void Envelope::compute() {
 }
 
 __global__ void computeEnvelopeKernel(const double *array, unsigned int size,
-                               unsigned int constraint, double *maxvalues,
-                               double *minvalues) {
+                                      unsigned int constraint,
+                                      double *maxvalues, double *minvalues) {
   __shared__ double sdataMax[Envelope::BLOCK_SZ];
   __shared__ double sdataMin[Envelope::BLOCK_SZ];
 
