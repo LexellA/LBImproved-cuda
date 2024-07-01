@@ -34,3 +34,14 @@ add_executable(test_LB src/include/dtw.h
 target_include_directories(test_LB PRIVATE ${PROJECT_SOURCE_DIR}/src/include)
 target_compile_options(test_LB PRIVATE $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:Debug>>:-G>)
 add_test(NAME test_LB COMMAND test_LB)
+
+
+add_executable(test_LBImproved 
+                        src/dtw.cu
+                        src/LB_Improved.cu
+                        src/LB_Keogh.cu
+                        src/Envelope.cu
+                        test/test_LBImproved.cu)
+target_include_directories(test_LBImproved PRIVATE ${PROJECT_SOURCE_DIR}/src/include)
+target_compile_options(test_LBImproved PRIVATE $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:Debug>>:-G>)
+add_test(NAME test_LBImproved COMMAND test_LBImproved)

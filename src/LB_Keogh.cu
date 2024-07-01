@@ -66,7 +66,7 @@ double LB_Keogh::test_kernel(const double* candidate)
     cudaMemcpy(d_candidate, candidate, size * sizeof(double), cudaMemcpyHostToDevice);
 
     // 调用computeErrorKernel，计算出每个点的误差errors
-    int threadsPerBlock = 512;
+    int threadsPerBlock = 256;
     int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
     // 分配device内存用于存储每个block的规约结果
     cudaMalloc(&d_result, blocksPerGrid * sizeof(double));
@@ -198,15 +198,6 @@ LB_Keogh::LB_Keogh(double* v, unsigned int v_size, unsigned int constraint)
     cudaMemcpy(U, U_K, size * sizeof(double), cudaMemcpyDeviceToHost);
     cudaMemcpy(L, L_K, size * sizeof(double), cudaMemcpyDeviceToHost);
 
-
-    // for(uint i = 0; i < 100; ++i)
-    // {
-    //     std::cout << U[i] << " ";
-    // }
-    // for(uint i = 0; i < 100; ++i)
-    // {
-    //     std::cout << L[i] << " ";
-    // }
 }
 
 LB_Keogh::~LB_Keogh()
@@ -214,4 +205,6 @@ LB_Keogh::~LB_Keogh()
     cudaFree(V_K);
     cudaFree(U_K);
     cudaFree(L_K);
+    free(U);
+    free(L);
 }

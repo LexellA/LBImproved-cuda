@@ -32,3 +32,6 @@ protected:
   double* U_K;
   double* L_K;
 };
+
+__global__ void reduceKernel(double *input, double *output, unsigned int n);
+__global__ void computeErrorKernel(const double *U, const double *L, const double *candidate, double *errors, unsigned int size);
