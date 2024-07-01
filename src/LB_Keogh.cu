@@ -53,7 +53,7 @@ __global__ void reduceKernel(double *input, double *output, unsigned int n)
         output[blockIdx.x] = sdata[0];
 }
 
-double LB_Keogh::test_kernel(double* candidate)
+double LB_Keogh::test_kernel(const double* candidate)
 {
     ++lb_keogh;
 
@@ -103,14 +103,14 @@ double LB_Keogh::test_kernel(double* candidate)
     if (error < bestsofar)
     {
         ++full_dtw;
-        const double trueerror = mDTW.fastdynamic_origin(V, candidate);
+        const double trueerror = mDTW.fastdynamic(V, candidate);
         if (trueerror < bestsofar)
             bestsofar = trueerror;
     }
     return bestsofar;
 }
 
-double LB_Keogh::test(double* candidate)
+double LB_Keogh::test(const double* candidate)
 {
     ++lb_keogh;
     double error(0.0);

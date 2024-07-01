@@ -15,13 +15,11 @@ void checkCudaStatus(cudaError_t status, const char *msg)
 }
 
 // Function to generate random walk data
-std::vector<double> getrandomwalk(uint size)
+void getrandomwalk(double *data, uint size)
 {
-    std::vector<double> data(size);
     data[0] = 0.0;
     for (uint k = 1; k < size; ++k)
         data[k] = (1.0 * rand() / RAND_MAX) - 0.5 + data[k - 1];
-    return data;
 }
 
 // Function to demo the LB_Keogh class with random walk data
@@ -29,8 +27,9 @@ void demo(uint size)
 {
     std::cout << "Generating random walk and matching it with other random walks..." << std::endl;
 
-    std::vector<double> target = getrandomwalk(size); // This is our target
-    LB_Keogh filter(target, size / 10);               // Use DTW with a tolerance of 10% (size/10)
+    // std::vector<double> target = getrandomwalk(size); // This is our target
+    double *target = new double[size];
+    LB_Keogh filter(target, size,  size / 10);               // Use DTW with a tolerance of 10% (size/10)
     double bestsofar = filter.getLowestCost();
     uint howmany = 5000;
 
@@ -44,7 +43,8 @@ void demo(uint size)
 
     for (uint i = 0; i < howmany; ++i)
     {
-        std::vector<double> candidate = getrandomwalk(size);
+        double *candidate = new double[size];
+        getrandomwalk(candidate, size);
 
         // Timing the original test function
         checkCudaStatus(cudaEventRecord(start), "Failed to record start event");
