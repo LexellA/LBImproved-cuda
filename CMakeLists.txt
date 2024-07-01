@@ -25,3 +25,12 @@ add_executable(test_dtw  src/include/dtw.h
 target_include_directories(test_dtw PRIVATE ${PROJECT_SOURCE_DIR}/src/include)
 target_compile_options(test_dtw PRIVATE $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:Debug>>:-G>)
 add_test(NAME test_dtw COMMAND test_dtw)
+
+add_executable(test_LB src/include/dtw.h
+                        src/dtw.cu
+                        src/LB_Keogh.cu
+                        src/Envelope.cu
+                        test/test_LB.cu)
+target_include_directories(test_LB PRIVATE ${PROJECT_SOURCE_DIR}/src/include)
+target_compile_options(test_LB PRIVATE $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:Debug>>:-G>)
+add_test(NAME test_LB COMMAND test_LB)

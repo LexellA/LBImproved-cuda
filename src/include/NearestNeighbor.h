@@ -5,8 +5,8 @@
 
 class NearestNeighbor {
  public:
-  NearestNeighbor(const std::vector<double>& v, unsigned int constraint);
-  virtual double test(const std::vector<double>& candidate) = 0;
+  NearestNeighbor(double* v, unsigned int constraint);
+  virtual double test(double* candidate) = 0;
   virtual double getLowestCost() = 0;
   virtual ~NearestNeighbor() {}
   virtual int getNumberOfDTW() = 0;
