@@ -1,6 +1,7 @@
 #include <cuda_runtime.h>
 #include <vector>
 
+#include "NearestNeighbor.h"
 #include "dtw.h"
 #include "LB_Keogh.h" 
 #include "Envelope.h"
@@ -58,7 +59,7 @@ double LB_Keogh::test_kernel(const double* candidate)
     ++lb_keogh;
 
     // 分配device内存
-    double  *d_U, *d_L, *d_candidate, *d_errors, *d_result;
+    double  *d_candidate, *d_errors, *d_result;
     // cudaMalloc(&d_V, size * sizeof(double));
     cudaMalloc(&d_candidate, size * sizeof(double));
     cudaMalloc(&d_errors, size * sizeof(double));
@@ -135,7 +136,7 @@ double LB_Keogh::test(const double* candidate)
 double LB_Keogh::getLowestCost() { return bestsofar; }
 
 LB_Keogh::LB_Keogh(double* v, unsigned int v_size, unsigned int constraint)
-    : NearestNeighbor(v, constraint), size(v_size), lb_keogh(0), full_dtw(0)
+    : NearestNeighbor(v, size, constraint), size(v_size), lb_keogh(0), full_dtw(0)
 {
     cudaMalloc(&V_K, size * sizeof(double));
     cudaMalloc(&U_K, size * sizeof(double));
