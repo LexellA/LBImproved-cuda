@@ -1,5 +1,7 @@
 #include <cuda_runtime.h>
 #include <vector>
+#include <iostream>
+#include <chrono>
 
 #include "NearestNeighbor.h"
 #include "dtw.h"
@@ -9,21 +11,15 @@
 __global__ void computeErrorKernel(const double *U, const double *L, const double *candidate, double *errors, unsigned int size)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < size)
-    {
-        if (candidate[i] > U[i])
-        {
-            errors[i] = candidate[i] - U[i];
-        }
-        else if (candidate[i] < L[i])
-        {
-            errors[i] = L[i] - candidate[i];
-        }
-        else
-        {
-            errors[i] = 0.0;
-        }
-    }
+    if (i >= size)
+        return;
+
+    double temp = candidate[i];
+    double upper = U[i];
+    double lower = L[i];
+
+    // 避免分支，通过数学运算代替if-else
+    errors[i] = max(0.0, temp - upper) + max(0.0, lower - temp);
 }
 
 __global__ void reduceKernel(double *input, double *output, unsigned int n)
@@ -56,6 +52,8 @@ __global__ void reduceKernel(double *input, double *output, unsigned int n)
 
 double LB_Keogh::test_kernel(const double* candidate)
 {
+
+
     ++lb_keogh;
 
     // 分配device内存
@@ -70,14 +68,34 @@ double LB_Keogh::test_kernel(const double* candidate)
     // 调用computeErrorKernel，计算出每个点的误差errors
     int threadsPerBlock = 512;
     int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+    // 分配device内存用于存储每个block的规约结果
+    cudaMalloc(&d_result, blocksPerGrid * sizeof(double));
+
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+    // auto start = std::chrono::high_resolution_clock::now();
+
     computeErrorKernel<<<blocksPerGrid, threadsPerBlock>>>(U_K, L_K, d_candidate, d_errors, size);
+
+    // cudaDeviceSynchronize();
+    // auto end = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+    // std::cout << "Time (computeErrorKernel): " << duration << " us" << std::endl;
+
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    std::cout << "Time (test_kernel): " << milliseconds << " ms" << std::endl;
+
 
     /**
      * 规约计算errors
      */ 
 
-    // 分配device内存用于存储每个block的规约结果
-    cudaMalloc(&d_result, blocksPerGrid * sizeof(double));
 
     // 每个block的共享内存大小
     int sharedMemSize = threadsPerBlock * sizeof(double); 
@@ -95,24 +113,34 @@ double LB_Keogh::test_kernel(const double* candidate)
         error += h_result[i];
     }
 
-    // Free device memory
-    cudaFree(d_candidate);
-    cudaFree(d_errors);
-    cudaFree(d_result);
+
 
     // Continue with the rest of the test function
     if (error < bestsofar)
     {
         ++full_dtw;
-        const double trueerror = mDTW.fastdynamic(V, candidate);
+        const double trueerror = mDTW.fastdynamic(V_K, d_candidate);
         if (trueerror < bestsofar)
             bestsofar = trueerror;
     }
+
+    // Free device memory
+    cudaFree(d_candidate);
+    cudaFree(d_errors);
+    cudaFree(d_result);
+
     return bestsofar;
 }
 
 double LB_Keogh::test(const double* candidate)
 {
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+    // auto start = std::chrono::high_resolution_clock::now();
+
+
     ++lb_keogh;
     double error(0.0);
     for (uint i = 0; i < size; ++i)
@@ -122,13 +150,30 @@ double LB_Keogh::test(const double* candidate)
         else if (candidate[i] < L[i])
             error += L[i] - candidate[i];
     }
+
+    // auto end = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    // std::cout << "Time (test): " << duration << " us" << std::endl;
+
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    std::cout << "Time (test): " << milliseconds << " ms" << std::endl;
+
+
     if (error < bestsofar)
     {
+        double *d_candidate;
+        cudaMalloc(&d_candidate, size * sizeof(double));
+        cudaMemcpy(d_candidate, candidate, size * sizeof(double), cudaMemcpyHostToDevice);
         ++full_dtw;
         const double trueerror =
-            mDTW.fastdynamic(V, candidate);
+            mDTW.fastdynamic(V_K, d_candidate);
         if (trueerror < bestsofar)
             bestsofar = trueerror;
+
+        cudaFree(d_candidate);
     }
     return bestsofar;
 }
@@ -136,22 +181,32 @@ double LB_Keogh::test(const double* candidate)
 double LB_Keogh::getLowestCost() { return bestsofar; }
 
 LB_Keogh::LB_Keogh(double* v, unsigned int v_size, unsigned int constraint)
-    : NearestNeighbor(v, size, constraint), size(v_size), lb_keogh(0), full_dtw(0)
+    : NearestNeighbor(v, v_size, constraint), size(v_size), lb_keogh(0), full_dtw(0), bestsofar(dtw::INF)
 {
+    V = v;
+    U = new double[size];
+    L = new double[size];
     cudaMalloc(&V_K, size * sizeof(double));
     cudaMalloc(&U_K, size * sizeof(double));
     cudaMalloc(&L_K, size * sizeof(double));
 
-    cudaMemcpy(V, V_K, size * sizeof(double), cudaMemcpyHostToDevice);
-    
-    assert(mConstraint >= 0);
-    assert(mConstraint < static_cast<int>(size));
+    cudaMemcpy(V_K, V, size * sizeof(double), cudaMemcpyHostToDevice);
 
     Envelope envelope(V_K, U_K, L_K, size, mConstraint);
     envelope.compute();
 
-    cudaMemcpy(U_K, U, size * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(L_K, L, size * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(U, U_K, size * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(L, L_K, size * sizeof(double), cudaMemcpyDeviceToHost);
+
+
+    // for(uint i = 0; i < 100; ++i)
+    // {
+    //     std::cout << U[i] << " ";
+    // }
+    // for(uint i = 0; i < 100; ++i)
+    // {
+    //     std::cout << L[i] << " ";
+    // }
 }
 
 LB_Keogh::~LB_Keogh()
