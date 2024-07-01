@@ -50,15 +50,15 @@ void unit_test_2(int size){
   checkCudaErrors(cudaMemcpy(d_w, w.data(), size * sizeof(double), cudaMemcpyHostToDevice));
 
   dtw DTW(size ,1);
-  //DTW.fastdynamic(d_v ,d_w);
-  DTW.fastdynamic_1(d_v ,d_w);
+  DTW.fastdynamic(d_v ,d_w);
+  //DTW.fastdynamic_1(d_v ,d_w);
   DTW.fastdynamic_origin(v ,w);
 }
 
 
 int main(){
-  unit_test_1();
-  //unit_test_2(20);
+  //unit_test_1();
+  unit_test_2(1000);
 
   return 0;
 }

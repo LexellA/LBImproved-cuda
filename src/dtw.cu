@@ -77,7 +77,7 @@ double dtw::fastdynamic(const double* v, const double* w) {
   checkCudaErrors(cudaEventRecord(start));
 
   int N = mN;
-  int K = 512; // 每个块的线程数
+  int K = 32; // 每个块的线程数
   int NBlks = ceil((float)N / K); // 计算所需的块数
   // 波前从0开始一直到2n  
   for(int wavefront = 0 ;wavefront <= 2 * (N - 1) ;wavefront++){
