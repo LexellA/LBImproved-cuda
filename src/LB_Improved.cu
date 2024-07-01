@@ -9,20 +9,6 @@
 #include "LB_Keogh.h"
 #include "Envelope.h"
 
-// __global__ void computeErrorKernel(const double *U, const double *L, const double *candidate, double *errors, unsigned int size)
-// {
-//     int i = blockIdx.x * blockDim.x + threadIdx.x;
-//     if (i >= size)
-//         return;
-
-//     double temp = candidate[i];
-//     double upper = U[i];
-//     double lower = L[i];
-
-//     // 避免分支，通过数学运算代替if-else
-//     errors[i] = max(0.0, temp - upper) + max(0.0, lower - temp);
-// }
-
 __global__ void computeErrorKernelBuffer(const double *U, const double *L, const double *candidate, double *errors, double *buffer, unsigned int size)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -51,33 +37,7 @@ __global__ void computeErrorKernelBuffer(const double *U, const double *L, const
     buffer[i] = r_buffer;
 }
 
-// __global__ void reduceKernel(double *input, double *output, unsigned int n)
-// {
-//     extern __shared__ double sdata[];
 
-//     // 每个线程负责读取一个元素到共享内存
-//     unsigned int tid = threadIdx.x;
-//     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-//     if (i < n)
-//         sdata[tid] = input[i];
-//     else
-//         sdata[tid] = 0;
-//     __syncthreads();
-
-//     // 进行并行规约，每一步都将活动线程数减半
-//     for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1)
-//     {
-//         if (tid < s)
-//         {
-//             sdata[tid] += sdata[tid + s];
-//         }
-//         __syncthreads();
-//     }
-
-//     // 将每个block的规约结果写回全局内存
-//     if (tid == 0)
-//         output[blockIdx.x] = sdata[0];
-// }
 
 /**
  * 规约计算数组和
@@ -249,11 +209,15 @@ double LB_Improved::test(const double *candidate)
         cudaEventElapsedTime(&milliseconds, start, stop);
         std::cout << "Time (test): " << milliseconds << " ms" << std::endl;
 
+        double *d_candidate;
+        cudaMalloc(&d_candidate, size * sizeof(double));
+        cudaMemcpy(d_candidate, candidate, size * sizeof(double), cudaMemcpyHostToDevice);
+
         if (error < bestsofar)
         {
             ++full_dtw;
             const double trueerror =
-                mDTW.fastdynamic(V, candidate); //,mConstraint,1);
+                mDTW.fastdynamic(V_K, d_candidate); //,mConstraint,1);
             if (trueerror < bestsofar)
                 bestsofar = trueerror;
         }
@@ -297,3 +261,35 @@ LB_Improved::~LB_Improved()
     free(U);
     free(L);
 }
+
+// double LB_Improved::fastdynamic111(const double *v, const double *w)
+// {
+
+
+//     double **mGamma;
+//     int mN = size;
+//     mGamma = new double *[mN];
+//     for (int i = 0; i < mN; ++i)
+//         mGamma[i] = new double[mN];
+
+//     double Best(dtw::INF);
+//     for (int i = 0; i < mN; ++i)
+//     {
+//         for (int j = max(0, i - mConstraint); j < min(mN, i + mConstraint + 1);
+//              ++j)
+//         {
+//             Best = dtw::INF;
+//             if (i > 0)
+//                 Best = mGamma[i - 1][j];
+//             if (j > 0)
+//                 Best = min(Best, mGamma[i][j - 1]);
+//             if ((i > 0) && (j > 0))
+//                 Best = min(Best, mGamma[i - 1][j - 1]);
+//             if ((i == 0) && (j == 0))
+//                 mGamma[i][j] = fabs(v[i] - w[j]);
+//             else
+//                 mGamma[i][j] = Best + fabs(v[i] - w[j]);
+//         }
+//     }
+//     return mGamma[mN - 1][mN - 1];
+// }

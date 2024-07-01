@@ -16,8 +16,12 @@ public:
   double justlb(const double *candidate);
   double getLowestCost();
   int getNumberOfDTW() { return full_dtw; }
+  // double LB_Improved::fastdynamic(const double *v, const double *w);
 
-  int getNumberOfCandidates() { return lb_keogh; }
+  int getNumberOfCandidates()
+  {
+    return lb_keogh;
+  }
 
 protected:
   int lb_keogh;
