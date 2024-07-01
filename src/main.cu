@@ -14,11 +14,11 @@ std::vector<double> get_rand_seq(uint size) {
   return data;
 }
 
-__global__ void computeDtw(double* v, double* w, double* mGamma, unsigned int N) {
+__global__ void computeDtw(double* v, double* w, double* mGamma, unsigned int N, unsigned int constraint) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
 
-  for (int i = gid; i < N; i += stride) {
+  for (int i = gid; i < N * N; i += stride) {
     mGamma[i] = dtw::INF;
   }
 
@@ -34,6 +34,8 @@ __global__ void computeDtw(double* v, double* w, double* mGamma, unsigned int N)
       int i = k - id;
       int j = id;
 
+      if (abs(i - j) > constraint)
+        continue;
       if (i - 1 < 0) {
         mGamma[i * N + j] = mGamma[i * N + j - 1] + fabs(v[i] - w[j]);
       } else if (j - 1 < 0) {
@@ -51,6 +53,9 @@ __global__ void computeDtw(double* v, double* w, double* mGamma, unsigned int N)
     for (int id = gid; id < N - k; id += stride) {
       int i = N - 1 - id;
       int j = k + id;
+
+      if (abs(i - j) > constraint)
+        continue;
 
       mGamma[i * N + j] = fabs(v[i] - w[j]) + min(min(mGamma[(i - 1) * N + j],
                                                       mGamma[i * N + j - 1]),
@@ -93,7 +98,7 @@ double fastdynamic_origin(const std::vector<double>& v,
 }
 
 int main() {
-  int array_size = 1000;
+  int array_size = 10000;
   std::vector<double> v = get_rand_seq(array_size);
   std::vector<double> w = get_rand_seq(array_size);
 
@@ -110,7 +115,8 @@ int main() {
   int numBlocks = (array_size + blockSize - 1) / blockSize;
 
   auto start = std::chrono::high_resolution_clock::now();
-  computeDtw<<<numBlocks, blockSize>>>(d_v, d_w, d_mGamma, array_size);
+  computeDtw<<<numBlocks, blockSize>>>(d_v, d_w, d_mGamma, array_size,
+                                       array_size / 10);
   cudaDeviceSynchronize();
   auto end = std::chrono::high_resolution_clock::now();
 
@@ -130,7 +136,8 @@ int main() {
       array_size, std::vector<double>(array_size, 100000000));
 
   start = std::chrono::high_resolution_clock::now();
-  double ans = fastdynamic_origin(v, w, array_size, 99999, mGamma_origin);
+  double ans =
+      fastdynamic_origin(v, w, array_size, array_size / 10, mGamma_origin);
   end = std::chrono::high_resolution_clock::now();
   std::cout << "CPU Time: "
             << std::chrono::duration_cast<std::chrono::microseconds>(end -
