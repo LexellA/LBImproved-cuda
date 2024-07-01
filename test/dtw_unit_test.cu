@@ -49,6 +49,7 @@ void unit_test_2(int size){
   checkCudaErrors(cudaMemcpy(d_v, v.data(), size * sizeof(double), cudaMemcpyHostToDevice));
   checkCudaErrors(cudaMemcpy(d_w, w.data(), size * sizeof(double), cudaMemcpyHostToDevice));
 
+
   dtw DTW(size ,999999);
   //DTW.fastdynamic(d_v ,d_w);
   DTW.fastdynamic_origin(v ,w);

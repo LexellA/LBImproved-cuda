@@ -45,11 +45,10 @@ int main() {
   vector<double> maxvalues(array.size());
   vector<double> minvalues(array.size());
   auto start2 = chrono::high_resolution_clock::now();
-  int blockSize2 = 256;
-  int numBlocks2 = arraySize;
   Envelope envelope(d_array, d_maxvalues, d_minvalues, arraySize,
                     arraySize / 10);
   envelope.compute();
+  cudaDeviceSynchronize();
   auto end2 = chrono::high_resolution_clock::now();
   cout << "GPU (a block per window) Time: "
        << chrono::duration_cast<chrono::microseconds>(end2 - start2).count()
@@ -58,23 +57,6 @@ int main() {
   cudaMemcpy(maxvalues.data(), d_maxvalues, arraySize * sizeof(double),
              cudaMemcpyDeviceToHost);
   cudaMemcpy(minvalues.data(), d_minvalues, arraySize * sizeof(double),
-             cudaMemcpyDeviceToHost);
-
-  vector<double> maxvalues3(array.size());
-  vector<double> minvalues3(array.size());
-  auto start1 = chrono::high_resolution_clock::now();
-  int blockSize1 = 256;
-  int numBlocks1 = (arraySize + blockSize1 - 1) / blockSize1;
-  computeEnvelopeKernelThreadPerWindow<<<numBlocks1, blockSize1>>>(
-      d_array, arraySize, arraySize / 10, d_maxvalues, d_minvalues);
-  auto end1 = chrono::high_resolution_clock::now();
-  cout << "GPU (a thread per window) Time: "
-       << chrono::duration_cast<chrono::microseconds>(end1 - start1).count()
-       << "us" << endl;
-
-  cudaMemcpy(maxvalues3.data(), d_maxvalues, arraySize * sizeof(double),
-             cudaMemcpyDeviceToHost);
-  cudaMemcpy(minvalues3.data(), d_minvalues, arraySize * sizeof(double),
              cudaMemcpyDeviceToHost);
 
 
@@ -89,11 +71,10 @@ int main() {
   
 
   for (int i = 0; i < array.size(); i++) {
-    if (maxvalues[i] != maxvalues2[i] || minvalues[i] != minvalues2[i] || maxvalues[i] != maxvalues3[i] || minvalues[i] != minvalues3[i]) {
+    if (maxvalues[i] != maxvalues2[i] || minvalues[i] != minvalues2[i]) {
       cout << "Mismatch at index " << i << endl;
       cout << "CPU: " << maxvalues2[i] << " " << minvalues2[i] << endl;
       cout << "GPU: " << maxvalues[i] << " " << minvalues[i] << endl;
-      cout << "GPU: " << maxvalues3[i] << " " << minvalues3[i] << endl;
       return 1;
     }
   }
@@ -143,31 +124,5 @@ void computeEnvelope(const vector<floattype> &array, uint constraint,
     }
     if (i - maxfifo.front() >= width) maxfifo.pop_front();
     if (i - minfifo.front() >= width) minfifo.pop_front();
-  }
-}
-
-__global__ void computeEnvelopeKernelThreadPerWindow(const double *array,
-                                                     unsigned int size,
-                                                     unsigned int constraint,
-                                                     double *maxvalues,
-                                                     double *minvalues) {
-  unsigned int bid = blockIdx.x;
-  unsigned int tid = threadIdx.x;
-  unsigned int i = bid * blockDim.x + tid;
-
-  if (i < size) {
-    unsigned int start = i > constraint ? i - constraint : 0;
-    unsigned int end = min(size, i + constraint + 1);
-
-    double maxval = array[start];
-    double minval = array[start];
-
-    for (int j = start; j < end; j++) {
-      maxval = max(maxval, array[j]);
-      minval = min(minval, array[j]);
-    }
-
-    maxvalues[i] = maxval;
-    minvalues[i] = minval;
   }
 }
