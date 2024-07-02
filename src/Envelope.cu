@@ -1,5 +1,6 @@
 #include <cuda_runtime.h>
 #include <cfloat>
+#include <cstdio>
 
 #include "Envelope.h"
 
@@ -17,53 +18,105 @@ Envelope::~Envelope() {}
 void Envelope::compute() {
 
   int blockSize = BLOCK_SZ;
-  int numBlocks = mSize;
+  int numBlocks = (mSize + blockSize - 1) / blockSize;
 
-  computeEnvelopeKernel<<<numBlocks, blockSize>>>(d_array, mSize, mConstraint,
-                                                  d_maxvalues, d_minvalues);
+  // computeEnvelopeKernel<<<numBlocks, blockSize,
+  //                         (Envelope::BLOCK_SZ + 2 * mConstraint) *
+  //                         sizeof(double)>>>(
+  //     d_array, mSize, mConstraint, d_maxvalues, d_minvalues);
+
+  computeEnvelopeKernelUsingCache<<<numBlocks, blockSize>>>(
+      d_array, mSize, mConstraint, d_maxvalues, d_minvalues);
+  
   return;
 }
 
 __global__ void computeEnvelopeKernel(const double *array, unsigned int size,
                                       unsigned int constraint,
                                       double *maxvalues, double *minvalues) {
-  __shared__ double sdataMax[Envelope::BLOCK_SZ];
-  __shared__ double sdataMin[Envelope::BLOCK_SZ];
+  extern __shared__ double sharedData[];
 
-  unsigned int bid = blockIdx.x;
-  unsigned int tid = threadIdx.x;
+  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int tid = threadIdx.x;
 
-  sdataMax[tid] = -DBL_MAX;
-  sdataMin[tid] = DBL_MAX;
+  int start = gid - constraint;
+  int sharedSize = Envelope::BLOCK_SZ + 2 * constraint;
 
-  if (bid < size) {
-    unsigned int start = bid > constraint ? bid - constraint : 0;
-    unsigned int end = min(size, bid + constraint + 1);
-
-    double maxval = array[start];
-    double minval = array[start];
-
-    for (int i = start + tid; i < end; i += blockDim.x) {
-      maxval = max(maxval, array[i]);
-      minval = min(minval, array[i]);
+  for (int i = 0; i < sharedSize - tid; i += blockDim.x) {
+    int index = start + i;
+    if (index < 0) {
+      sharedData[i + tid] = array[0];
+    } else if (index >= size) {
+      sharedData[i + tid] = array[size - 1];
+    } else {
+      sharedData[i + tid] = array[index];
     }
+  }
 
-    sdataMax[tid] = maxval;
-    sdataMin[tid] = minval;
+  __syncthreads();
 
-    __syncthreads();
-
-    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
-      if (tid < s) {
-        sdataMax[tid] = max(sdataMax[tid], sdataMax[tid + s]);
-        sdataMin[tid] = min(sdataMin[tid], sdataMin[tid + s]);
+  if (gid < size) {
+    double maxvalue = -DBL_MAX;
+    double minvalue = DBL_MAX;
+    for (int i = 0; i < 2 * constraint + 1; i++) {
+      if (sharedData[tid + i] > maxvalue) {
+        maxvalue = sharedData[tid + i];
       }
-      __syncthreads();
+      if (sharedData[tid + i] < minvalue) {
+        minvalue = sharedData[tid + i];
+      }
+    }
+    maxvalues[gid] = maxvalue;
+    minvalues[gid] = minvalue;
+  }
+}
+
+__global__ void computeEnvelopeKernelUsingCache(const double *array, unsigned int size,
+                                      unsigned int constraint,
+                                      double *maxvalues, double *minvalues) {
+  __shared__ double sharedData[Envelope::BLOCK_SZ];
+
+  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int bid = blockIdx.x;
+  int tid = threadIdx.x;
+
+  if(gid < size){
+    sharedData[tid] = array[gid];
+  } else {
+    sharedData[tid] = array[size - 1];
+  }
+
+  __syncthreads();
+
+  if (gid < size) {
+    double maxvalue = -DBL_MAX;
+    double minvalue = DBL_MAX;
+
+    int start = gid > constraint ? gid - constraint : 0;
+    int end = min(gid + constraint + 1, size);
+
+    int sharedStart = bid * blockDim.x;
+    int sharedEnd = sharedStart + blockDim.x;
+
+    for (int i = start; i < end; i++) {
+      if (sharedStart <= i && i < sharedEnd) {
+        if (sharedData[i - sharedStart] > maxvalue) {
+          maxvalue = sharedData[i - sharedStart];
+        }
+        if (sharedData[i - sharedStart] < minvalue) {
+          minvalue = sharedData[i - sharedStart];
+        }
+      } else {
+        if (array[i] > maxvalue) {
+          maxvalue = array[i];
+        }
+        if (array[i] < minvalue) {
+          minvalue = array[i];
+        }
+      }
     }
 
-    if (tid == 0) {
-      maxvalues[bid] = sdataMax[0];
-      minvalues[bid] = sdataMin[0];
-    }
+    maxvalues[gid] = maxvalue;
+    minvalues[gid] = minvalue;
   }
 }

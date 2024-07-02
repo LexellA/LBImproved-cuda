@@ -22,7 +22,7 @@ __global__ void warmup() {
 }
 
 int main() {
-  const int arraySize = 100000;
+  const int arraySize = 10000;
 
   std::mt19937 gen(0);
   std::uniform_real_distribution<double> dis(0, 1000);
@@ -50,7 +50,7 @@ int main() {
   envelope.compute();
   cudaDeviceSynchronize();
   auto end2 = chrono::high_resolution_clock::now();
-  cout << "GPU (a block per window) Time: "
+  cout << "GPU Time: "
        << chrono::duration_cast<chrono::microseconds>(end2 - start2).count()
        << "us" << endl;
 
