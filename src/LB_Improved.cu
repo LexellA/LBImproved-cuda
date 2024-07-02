@@ -187,8 +187,8 @@ double LB_Improved::test(const double *candidate)
         //     return bestsofar;
     }
 
-    // if (error < bestsofar)
-    // {
+    if (error < bestsofar)
+    {
 
         // cudaMemcpy(d_buffer, buffer, size * sizeof(double), cudaMemcpyHostToDevice);
 
@@ -225,18 +225,18 @@ double LB_Improved::test(const double *candidate)
         // cudaMalloc(&d_candidate, size * sizeof(double));
         // cudaMemcpy(d_candidate, candidate, size * sizeof(double), cudaMemcpyHostToDevice);
 
-        // if (error < bestsofar)
-        // {
+        if (error < bestsofar)
+        {
             ++full_dtw;
             // const double trueerror = mDTW.fastdynamic(V_K, d_candidate); 
             std::vector<double> w(candidate, candidate + size);
             const double trueerror = mDTW.fastdynamic_origin(V_original, w);
             if (trueerror < bestsofar)
                 bestsofar = trueerror;
-    //     }
+        }
 
         
-    // }
+    }
     //     // cudaFree(d_U2);
         // cudaFree(d_L2);
         // cudaFree(d_buffer);
