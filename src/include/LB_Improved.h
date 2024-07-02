@@ -1,31 +1,41 @@
 #pragma once
 
 #include <vector>
-#include <string>
+#include <cassert>
+
 #include "NearestNeighbor.h"
 
-class LB_Improved : public NearestNeighbor {
- public:
-  LB_Improved(const std::vector<double> &v, int constraint);
+class LB_Improved : public NearestNeighbor
+{
+public:
+  LB_Improved(double *v, unsigned int size, unsigned int constraint);
   ~LB_Improved();
 
-  void resetStatistics();
-  double justlb(const std::vector<double> &candidate);
-  double test(const std::vector<double> &candidate);
-  std::string dumpTextDescriptor(const std::vector<double> &candidate);
-  int getNumberOfDTW();
-  int getNumberOfCandidates();
+  double test(const double *candidate);
+  double test_kernel(const double *candidate);
+  double justlb(const double *candidate);
   double getLowestCost();
+  int getNumberOfDTW() { return full_dtw; }
+  // double LB_Improved::fastdynamic(const double *v, const double *w);
 
- private:
+  int getNumberOfCandidates()
+  {
+    return lb_keogh;
+  }
+
+protected:
   int lb_keogh;
   int full_dtw;
-  const std::vector<double> V;
-  std::vector<double> buffer;
+  unsigned int size;
   int mConstraint;
   double bestsofar;
-  std::vector<double> U;
-  std::vector<double> L;
-  std::vector<double> U2;
-  std::vector<double> L2;
+  double *V;
+  double *U;
+  double *L;
+  double *V_K;
+  double *U_K;
+  double *L_K;
+  std::vector<double> V_original;
+  // std::vector<double> U_original;
+  // std::vector<double> L_original;
 };
