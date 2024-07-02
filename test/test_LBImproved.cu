@@ -2,6 +2,8 @@
 #include <vector>
 #include <cuda_runtime.h>
 #include <cassert>
+#include <chrono>
+#include <cmath>
 #include "dtw.h"
 #include "LB_Improved.h"
 
@@ -56,22 +58,18 @@ int test(int size)
     warmupGPU();
 
     // Timing the test_kernel function
-    checkCudaStatus(cudaEventRecord(start), "Failed to record start event");
+    auto startKernel = std::chrono::high_resolution_clock::now();
     double bestKernel = filter.test_kernel(candidate);
     cudaDeviceSynchronize();
-    checkCudaStatus(cudaEventRecord(stop), "Failed to record stop event");
-    checkCudaStatus(cudaEventSynchronize(stop), "Failed to synchronize stop event");
-    float millisecondsTestKernel = 0;
-    checkCudaStatus(cudaEventElapsedTime(&millisecondsTestKernel, start, stop), "Failed to get elapsed time");
+    auto endKernel = std::chrono::high_resolution_clock::now();
+    auto durationKernel = std::chrono::duration_cast<std::chrono::milliseconds>(endKernel - startKernel).count();
+
 
     // Timing the original test function
-    checkCudaStatus(cudaEventRecord(start), "Failed to record start event");
+    auto startTest = std::chrono::high_resolution_clock::now();
     double best = filter.test(candidate);
-    cudaDeviceSynchronize();
-    checkCudaStatus(cudaEventRecord(stop), "Failed to record stop event");
-    checkCudaStatus(cudaEventSynchronize(stop), "Failed to synchronize stop event");
-    float millisecondsTest = 0;
-    checkCudaStatus(cudaEventElapsedTime(&millisecondsTest, start, stop), "Failed to get elapsed time");
+    auto endTest = std::chrono::high_resolution_clock::now();
+    auto durationTest = std::chrono::duration_cast<std::chrono::milliseconds>(endTest - startTest).count();
 
     assert(best == bestKernel);
 
@@ -79,8 +77,8 @@ int test(int size)
     // std::cout << "Iteration: " << i + 1 << ", Time (test): " << millisecondsTest << " ms, Time (test_kernel): " << millisecondsTestKernel << " ms" << std::endl;
 
     std::cout << "Compared with " << howmany << " random walks, closest match is at a distance (L1 norm) of " << filter.getLowestCost() << std::endl;
-    std::cout << "Average time (test): " << millisecondsTest / howmany << " ms" << std::endl;
-    std::cout << "Average time (test_kernel): " << millisecondsTestKernel / howmany << " ms" << std::endl;
+    std::cout << "Average time (test): " << durationKernel << " ms" << std::endl;
+    std::cout << "Average time (test_kernel): " << durationTest << " ms" << std::endl;
 
     // Clean up
     checkCudaStatus(cudaEventDestroy(start), "Failed to destroy start event");

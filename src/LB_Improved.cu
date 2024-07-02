@@ -1,6 +1,7 @@
 #include <cuda_runtime.h>
 #include <vector>
 #include <iostream>
+#include <deque>
 #include <chrono>
 
 #include "NearestNeighbor.h"
@@ -8,6 +9,8 @@
 #include "LB_Improved.h"
 #include "LB_Keogh.h"
 #include "Envelope.h"
+
+static void computeEnvelope(const std::vector<double> &array, uint constraint, std::vector<double> &maxvalues, std::vector<double> &minvalues);
 
 __global__ void computeErrorKernelBuffer(const double *U, const double *L, const double *candidate, double *errors, double *buffer, unsigned int size)
 {
@@ -94,10 +97,10 @@ double LB_Improved::test_kernel(const double *candidate)
     int threadsPerBlock = 256;
     int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
 
-    cudaEvent_t start, stop;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
-    cudaEventRecord(start);
+    // cudaEvent_t start, stop;
+    // cudaEventCreate(&start);
+    // cudaEventCreate(&stop);
+    // cudaEventRecord(start);
     // auto start = std::chrono::high_resolution_clock::now();
 
     computeErrorKernelBuffer<<<blocksPerGrid, threadsPerBlock>>>(U_K, L_K, d_candidate, d_errors, d_buffer, size);
@@ -122,11 +125,11 @@ double LB_Improved::test_kernel(const double *candidate)
 
         double error2 = compute_sum(d_errors, size);
 
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        float milliseconds = 0;
-        cudaEventElapsedTime(&milliseconds, start, stop);
-        std::cout << "Time (test_kernel): " << milliseconds << " ms" << std::endl;
+        // cudaEventRecord(stop);
+        // cudaEventSynchronize(stop);
+        // float milliseconds = 0;
+        // cudaEventElapsedTime(&milliseconds, start, stop);
+        // std::cout << "Time (test_kernel): " << milliseconds << " ms" << std::endl;
 
         if (error2 < bestsofar)
         {
@@ -150,22 +153,23 @@ double LB_Improved::test_kernel(const double *candidate)
 
 double LB_Improved::test(const double *candidate)
 {
-        double *d_U2, *d_L2,  *U2, *L2;
-        double * d_buffer;
-        U2 = new double[size];
-        L2 = new double[size];
-        cudaMalloc(&d_U2, size * sizeof(double));
-        cudaMalloc(&d_L2, size * sizeof(double));
-        cudaMalloc(&d_buffer, size * sizeof(double));
+        // double *d_U2, *d_L2,  *U2, *L2;
+        // double * d_buffer;
+        // U2 = new double[size];
+        // L2 = new double[size];
+        // cudaMalloc(&d_U2, size * sizeof(double));
+        // cudaMalloc(&d_L2, size * sizeof(double));
+        // cudaMalloc(&d_buffer, size * sizeof(double));
 
-    cudaEvent_t start, stop;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
-    cudaEventRecord(start);
+    // cudaEvent_t start, stop;
+    // cudaEventCreate(&start);
+    // cudaEventCreate(&stop);
+    // cudaEventRecord(start);
 
     ++lb_keogh;
     double error(0.0);
-    double *buffer = new double[size];
+    // double *buffer = new double[size];
+    std::vector<double> buffer(size);
     for (uint i = 0; i < size; ++i)
     {
         const double &cdi(candidate[i]);
@@ -179,21 +183,23 @@ double LB_Improved::test(const double *candidate)
         }
         else
             buffer[i] = cdi;
-        if (error > bestsofar)
-            return bestsofar;
+        // if (error > bestsofar)
+        //     return bestsofar;
     }
 
-    if (error < bestsofar)
-    {
+    // if (error < bestsofar)
+    // {
 
-        cudaMemcpy(d_buffer, buffer, size * sizeof(double), cudaMemcpyHostToDevice);
+        // cudaMemcpy(d_buffer, buffer, size * sizeof(double), cudaMemcpyHostToDevice);
 
-        Envelope envelope(d_buffer, d_U2, d_L2, size, mConstraint);
+        // Envelope envelope(d_buffer, d_U2, d_L2, size, mConstraint);
 
-        envelope.compute();
+        // envelope.compute();
 
-        cudaMemcpy(U2, d_U2, size * sizeof(double), cudaMemcpyDeviceToHost);
-        cudaMemcpy(L2, d_L2, size * sizeof(double), cudaMemcpyDeviceToHost);
+        // cudaMemcpy(U2, d_U2, size * sizeof(double), cudaMemcpyDeviceToHost);
+        // cudaMemcpy(L2, d_L2, size * sizeof(double), cudaMemcpyDeviceToHost);
+        std::vector<double> U2(size), L2(size);
+        computeEnvelope(buffer, mConstraint, U2, L2);
 
         for (uint i = 0; i < size; ++i)
         {
@@ -205,36 +211,38 @@ double LB_Improved::test(const double *candidate)
             {
                 error += L2[i] - V[i];
             }
-            if (error > bestsofar)
-                return bestsofar;
+            // if (error > bestsofar)
+            //     return bestsofar;
         }
 
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        float milliseconds = 0;
-        cudaEventElapsedTime(&milliseconds, start, stop);
-        std::cout << "Time (test): " << milliseconds << " ms" << std::endl;
+        // cudaEventRecord(stop);
+        // cudaEventSynchronize(stop);
+        // float milliseconds = 0;
+        // cudaEventElapsedTime(&milliseconds, start, stop);
+        // std::cout << "Time (test): " << milliseconds << " ms" << std::endl;
 
-        double *d_candidate;
-        cudaMalloc(&d_candidate, size * sizeof(double));
-        cudaMemcpy(d_candidate, candidate, size * sizeof(double), cudaMemcpyHostToDevice);
+        // double *d_candidate;
+        // cudaMalloc(&d_candidate, size * sizeof(double));
+        // cudaMemcpy(d_candidate, candidate, size * sizeof(double), cudaMemcpyHostToDevice);
 
-        if (error < bestsofar)
-        {
+        // if (error < bestsofar)
+        // {
             ++full_dtw;
-            const double trueerror =
-                mDTW.fastdynamic(V_K, d_candidate); //,mConstraint,1);
+            // const double trueerror = mDTW.fastdynamic(V_K, d_candidate); 
+            std::vector<double> w(candidate, candidate + size);
+            const double trueerror = mDTW.fastdynamic_origin(V_original, w);
             if (trueerror < bestsofar)
                 bestsofar = trueerror;
-        }
+    //     }
 
         
-    }
-        cudaFree(d_U2);
-        cudaFree(d_L2);
-        cudaFree(d_buffer);
-        free(U2);
-        free(L2);
+    // }
+    //     // cudaFree(d_U2);
+        // cudaFree(d_L2);
+        // cudaFree(d_buffer);
+        // free(buffer);
+        // free(U2);
+        // free(L2);
     return bestsofar;
 }
 
@@ -257,6 +265,10 @@ LB_Improved::LB_Improved(double *v, unsigned int v_size, unsigned int constraint
 
     cudaMemcpy(U, U_K, size * sizeof(double), cudaMemcpyDeviceToHost);
     cudaMemcpy(L, L_K, size * sizeof(double), cudaMemcpyDeviceToHost);
+
+    V_original = std::vector<double>(v, v + size);   
+    // U_original = std::vector<double>(U, U + size);
+    // L_original = std::vector<double>(L, L + size);
 }
 
 LB_Improved::~LB_Improved()
@@ -268,34 +280,56 @@ LB_Improved::~LB_Improved()
     free(L);
 }
 
-// double LB_Improved::fastdynamic111(const double *v, const double *w)
-// {
-
-
-//     double **mGamma;
-//     int mN = size;
-//     mGamma = new double *[mN];
-//     for (int i = 0; i < mN; ++i)
-//         mGamma[i] = new double[mN];
-
-//     double Best(dtw::INF);
-//     for (int i = 0; i < mN; ++i)
-//     {
-//         for (int j = max(0, i - mConstraint); j < min(mN, i + mConstraint + 1);
-//              ++j)
-//         {
-//             Best = dtw::INF;
-//             if (i > 0)
-//                 Best = mGamma[i - 1][j];
-//             if (j > 0)
-//                 Best = min(Best, mGamma[i][j - 1]);
-//             if ((i > 0) && (j > 0))
-//                 Best = min(Best, mGamma[i - 1][j - 1]);
-//             if ((i == 0) && (j == 0))
-//                 mGamma[i][j] = fabs(v[i] - w[j]);
-//             else
-//                 mGamma[i][j] = Best + fabs(v[i] - w[j]);
-//         }
-//     }
-//     return mGamma[mN - 1][mN - 1];
-// }
+static void computeEnvelope(const std::vector<double> &array, uint constraint, std::vector<double> &maxvalues, std::vector<double> &minvalues)
+{
+    uint width = 1 + 2 * constraint;
+    std::deque<int> maxfifo, minfifo;
+    maxfifo.push_back(0);
+    minfifo.push_back(0);
+    for (uint i = 1; i < array.size(); ++i)
+    {
+        if (i >= constraint + 1)
+        {
+            maxvalues[i - constraint - 1] = array[maxfifo.front()];
+            minvalues[i - constraint - 1] = array[minfifo.front()];
+        }
+        if (array[i] > array[i - 1])
+        { // overshoot
+            maxfifo.pop_back();
+            while (maxfifo.size() > 0)
+            {
+                if (array[i] <= array[maxfifo.back()])
+                    break;
+                maxfifo.pop_back();
+            }
+        }
+        else
+        {
+            minfifo.pop_back();
+            while (minfifo.size() > 0)
+            {
+                if (array[i] >= array[minfifo.back()])
+                    break;
+                minfifo.pop_back();
+            }
+        }
+        maxfifo.push_back(i);
+        minfifo.push_back(i);
+        if (i == width + maxfifo.front())
+            maxfifo.pop_front();
+        else if (i == width + minfifo.front())
+            minfifo.pop_front();
+    }
+    for (uint i = array.size(); i <= array.size() + constraint; ++i)
+    {
+        if (i >= constraint + 1)
+        {
+            maxvalues[i - constraint - 1] = array[maxfifo.front()];
+            minvalues[i - constraint - 1] = array[minfifo.front()];
+        }
+        if (i - maxfifo.front() >= width)
+            maxfifo.pop_front();
+        if (i - minfifo.front() >= width)
+            minfifo.pop_front();
+    }
+}

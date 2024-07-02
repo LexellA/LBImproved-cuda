@@ -35,4 +35,7 @@ protected:
   double *V_K;
   double *U_K;
   double *L_K;
+  std::vector<double> V_original;
+  // std::vector<double> U_original;
+  // std::vector<double> L_original;
 };
