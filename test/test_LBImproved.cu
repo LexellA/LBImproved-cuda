@@ -58,6 +58,7 @@ int test(int size)
     // Timing the test_kernel function
     checkCudaStatus(cudaEventRecord(start), "Failed to record start event");
     double bestKernel = filter.test_kernel(candidate);
+    cudaDeviceSynchronize();
     checkCudaStatus(cudaEventRecord(stop), "Failed to record stop event");
     checkCudaStatus(cudaEventSynchronize(stop), "Failed to synchronize stop event");
     float millisecondsTestKernel = 0;
@@ -66,6 +67,7 @@ int test(int size)
     // Timing the original test function
     checkCudaStatus(cudaEventRecord(start), "Failed to record start event");
     double best = filter.test(candidate);
+    cudaDeviceSynchronize();
     checkCudaStatus(cudaEventRecord(stop), "Failed to record stop event");
     checkCudaStatus(cudaEventSynchronize(stop), "Failed to synchronize stop event");
     float millisecondsTest = 0;
@@ -89,5 +91,5 @@ int test(int size)
 
 int main()
 {
-    return test(100);
+    return test(10000);
 }

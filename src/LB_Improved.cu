@@ -85,6 +85,11 @@ double LB_Improved::test_kernel(const double *candidate)
     cudaMemcpy(d_candidate, candidate, size * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(d_buffer, candidate, size * sizeof(double), cudaMemcpyHostToDevice);
 
+    // 第二次LB_Keogh
+    double *d_U2, *d_L2;
+    cudaMalloc(&d_U2, size * sizeof(double));
+    cudaMalloc(&d_L2, size * sizeof(double));
+
     // 调用computeErrorKernel，计算出每个点的误差errors
     int threadsPerBlock = 256;
     int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
@@ -103,27 +108,25 @@ double LB_Improved::test_kernel(const double *candidate)
 
     // std::cout << "Time (computeErrorKernel): " << duration << " us" << std::endl;
 
-    cudaEventRecord(stop);
-    cudaEventSynchronize(stop);
-    float milliseconds = 0;
-    cudaEventElapsedTime(&milliseconds, start, stop);
-    std::cout << "Time (test_kernel): " << milliseconds << " ms" << std::endl;
+
 
     double error = compute_sum(d_errors, size);
 
     // Continue with the rest of the test function
     if (error < bestsofar)
     {
-        double *d_U2, *d_L2;
-        cudaMalloc(&d_U2, size * sizeof(double));
-        cudaMalloc(&d_L2, size * sizeof(double));
-
         Envelope envelope(d_buffer, d_U2, d_L2, size, mConstraint);
         envelope.compute();
 
         computeErrorKernel<<<blocksPerGrid, threadsPerBlock>>>(d_U2, d_L2, V_K, d_errors, size);
 
         double error2 = compute_sum(d_errors, size);
+
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+        float milliseconds = 0;
+        cudaEventElapsedTime(&milliseconds, start, stop);
+        std::cout << "Time (test_kernel): " << milliseconds << " ms" << std::endl;
 
         if (error2 < bestsofar)
         {
@@ -135,6 +138,9 @@ double LB_Improved::test_kernel(const double *candidate)
     }
 
     // Free device memory
+    cudaFree(d_U2);
+    cudaFree(d_L2);
+
     cudaFree(d_candidate);
     cudaFree(d_errors);
     cudaFree(d_buffer);
@@ -144,6 +150,13 @@ double LB_Improved::test_kernel(const double *candidate)
 
 double LB_Improved::test(const double *candidate)
 {
+        double *d_U2, *d_L2,  *U2, *L2;
+        double * d_buffer;
+        U2 = new double[size];
+        L2 = new double[size];
+        cudaMalloc(&d_U2, size * sizeof(double));
+        cudaMalloc(&d_L2, size * sizeof(double));
+        cudaMalloc(&d_buffer, size * sizeof(double));
 
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
@@ -172,13 +185,6 @@ double LB_Improved::test(const double *candidate)
 
     if (error < bestsofar)
     {
-        double *d_U2, *d_L2,  *U2, *L2;
-        double * d_buffer;
-        U2 = new double[size];
-        L2 = new double[size];
-        cudaMalloc(&d_U2, size * sizeof(double));
-        cudaMalloc(&d_L2, size * sizeof(double));
-        cudaMalloc(&d_buffer, size * sizeof(double));
 
         cudaMemcpy(d_buffer, buffer, size * sizeof(double), cudaMemcpyHostToDevice);
 
@@ -222,13 +228,13 @@ double LB_Improved::test(const double *candidate)
                 bestsofar = trueerror;
         }
 
+        
+    }
         cudaFree(d_U2);
         cudaFree(d_L2);
         cudaFree(d_buffer);
         free(U2);
         free(L2);
-        
-    }
     return bestsofar;
 }
 
