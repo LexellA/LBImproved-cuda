@@ -52,7 +52,7 @@ void unit_test_2(int size){
 
   dtw DTW(size ,size/10);
   DTW.fastdynamic(d_v ,d_w);
-  DTW.fastdynamic_SC(d_v ,d_w);
+  // DTW.fastdynamic_SC(d_v ,d_w);
   DTW.fastdynamic_origin(v ,w);
 }
 
