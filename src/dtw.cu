@@ -100,7 +100,11 @@ double dtw::fastdynamic(double* v, double* w) {
   // 计算并打印执行时间
   float milliseconds = 0;
   checkCudaErrors(cudaEventElapsedTime(&milliseconds, start, stop));
-  // std::cout << "CUDA Execution time: " << milliseconds << " ms " << "fd: " << mGamma[(mN - 1) * N + mN - 1] << std::endl;
+
+  // 输出结果
+  std::vector<double> gamma_cpu(mN * mN);
+  cudaMemcpy(gamma_cpu.data(), mGamma, mN * mN * sizeof(double), cudaMemcpyDeviceToHost);
+  std::cout << "CUDA Execution time: " << milliseconds << " ms " << "fd: " << gamma_cpu[(mN - 1) * N + mN - 1] << std::endl;
 
   // 清理
   checkCudaErrors(cudaEventDestroy(start));
