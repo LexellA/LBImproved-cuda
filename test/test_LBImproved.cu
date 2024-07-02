@@ -42,14 +42,13 @@ int test(int size)
 
     double *target = new double[size];
     getrandomwalk(target, size);
+    LB_Improved filter_kernel(target, size, size / 10); // Use DTW with a tolerance of 10% (size/10)
     LB_Improved filter(target, size, size / 10); // Use DTW with a tolerance of 10% (size/10)
-    double bestsofar = filter.getLowestCost();
-    uint howmany = 1;
+    // double bestsofar = filter.getLowestCost();
+    // uint howmany = 1;
 
     // Allocate CUDA events for original test function
-    cudaEvent_t start, stop;
-    checkCudaStatus(cudaEventCreate(&start), "Failed to create start event");
-    checkCudaStatus(cudaEventCreate(&stop), "Failed to create stop event");
+
 
 
     double *candidate = new double[size];
@@ -59,7 +58,7 @@ int test(int size)
 
     // Timing the test_kernel function
     auto startKernel = std::chrono::high_resolution_clock::now();
-    double bestKernel = filter.test_kernel(candidate);
+    double bestKernel = filter_kernel.test_kernel(candidate);
     cudaDeviceSynchronize();
     auto endKernel = std::chrono::high_resolution_clock::now();
     auto durationKernel = std::chrono::duration_cast<std::chrono::milliseconds>(endKernel - startKernel).count();
@@ -76,13 +75,12 @@ int test(int size)
 
     // std::cout << "Iteration: " << i + 1 << ", Time (test): " << millisecondsTest << " ms, Time (test_kernel): " << millisecondsTestKernel << " ms" << std::endl;
 
-    std::cout << "Compared with " << howmany << " random walks, closest match is at a distance (L1 norm) of " << filter.getLowestCost() << std::endl;
-    std::cout << "Average time (test): " << durationKernel << " ms" << std::endl;
-    std::cout << "Average time (test_kernel): " << durationTest << " ms" << std::endl;
+    std::cout << "Average time (test): " << durationTest << " ms" << std::endl;
+    std::cout << "Average time (test_kernel): " << durationKernel << " ms" << std::endl;
 
     // Clean up
-    checkCudaStatus(cudaEventDestroy(start), "Failed to destroy start event");
-    checkCudaStatus(cudaEventDestroy(stop), "Failed to destroy stop event");
+    // checkCudaStatus(cudaEventDestroy(start), "Failed to destroy start event");
+    // checkCudaStatus(cudaEventDestroy(stop), "Failed to destroy stop event");
 
     return 0;
 }
