@@ -14,8 +14,7 @@ Envelope::Envelope(double *d_array, double *d_maxvalues, double *d_minvalues,
 
 Envelope::~Envelope() {}
 
-void Envelope::compute() {
-
+void Envelope::compute(cudaStream_t& stream) {
   int blockSize = BLOCK_SZ;
   int numBlocks = (mSize + blockSize - 1) / blockSize;
 
@@ -24,9 +23,19 @@ void Envelope::compute() {
   //                         sizeof(double)>>>(
   //     d_array, mSize, mConstraint, d_maxvalues, d_minvalues);
 
-  computeEnvelopeKernelUsingCache<<<numBlocks, blockSize>>>(
+  computeEnvelopeKernelUsingCache<<<numBlocks, blockSize, 0, stream>>>(
       d_array, mSize, mConstraint, d_maxvalues, d_minvalues);
   
+  return;
+}
+
+void Envelope::compute() {
+  int blockSize = BLOCK_SZ;
+  int numBlocks = (mSize + blockSize - 1) / blockSize;
+
+  computeEnvelopeKernelUsingCache<<<numBlocks, blockSize,0>>>(
+      d_array, mSize, mConstraint, d_maxvalues, d_minvalues);
+
   return;
 }
 

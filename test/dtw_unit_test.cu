@@ -2,6 +2,7 @@
 #include <chrono>
 #include "../src/include/dtw_origin.h"
 #include "../src/include/dtw.h"
+#include "dtw_origin.h"
 
 std::vector<double> get_rand_seq(uint size) {
   std::vector<double> data(size);
@@ -39,6 +40,7 @@ void unit_test_1(){
   Origin::dtw oDTW(x.size(), 1);
   mDTW.fastdynamic(d_x, d_y);
   oDTW.fastdynamic(x ,y);
+
 }
 
 void unit_test_2(int size){

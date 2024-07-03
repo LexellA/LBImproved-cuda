@@ -24,6 +24,10 @@ protected:
   double* U_K;
   double* L_K;
   double *d_candidate, *d_errors, *d_result;
+
+  cudaStream_t mStream;
+  cudaGraph_t mGraph;
+  cudaGraphExec_t mGraphExec;
 };
 
 __global__ void reduceKernel(double *input, double *output, unsigned int n);

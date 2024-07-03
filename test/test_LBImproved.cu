@@ -2,7 +2,9 @@
 #include <cuda_runtime.h>
 #include <cassert>
 #include <chrono>
+#include <vector>
 #include "LB_Improved.h"
+#include "dtw_origin.h"
 
 // Helper function to check CUDA error status
 void checkCudaStatus(cudaError_t status, const char *msg)
@@ -40,7 +42,10 @@ int test(int size)
     double *target = new double[size];
     getrandomwalk(target, size);
     LB_Improved filter_kernel(target, size, size / 10); // Use DTW with a tolerance of 10% (size/10)
-    LB_Improved filter(target, size, size / 10); // Use DTW with a tolerance of 10% (size/10)
+
+    std::vector<double> target_origin(target, target + size);
+    Origin::LB_Improved filter(target_origin, size / 10);
+    // Use DTW with a tolerance of 10% (size/10)
     // double bestsofar = filter.getLowestCost();
     // uint howmany = 1;
 
@@ -55,15 +60,16 @@ int test(int size)
 
     // Timing the test_kernel function
     auto startKernel = std::chrono::high_resolution_clock::now();
-    double bestKernel = filter_kernel.test_kernel(candidate);
+    double bestKernel = filter_kernel.test(candidate);
     cudaDeviceSynchronize();
     auto endKernel = std::chrono::high_resolution_clock::now();
     auto durationKernel = std::chrono::duration_cast<std::chrono::milliseconds>(endKernel - startKernel).count();
 
 
     // Timing the original test function
+    std::vector<double> candidate_origin(candidate, candidate + size);
     auto startTest = std::chrono::high_resolution_clock::now();
-    double best = filter.test(candidate);
+    double best = filter.test(candidate_origin);
     auto endTest = std::chrono::high_resolution_clock::now();
     auto durationTest = std::chrono::duration_cast<std::chrono::milliseconds>(endTest - startTest).count();
 

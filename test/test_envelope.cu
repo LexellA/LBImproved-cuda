@@ -22,7 +22,7 @@ __global__ void warmup() {
 }
 
 int main() {
-  const int arraySize = 10000;
+  const int arraySize = 20000;
 
   std::mt19937 gen(0);
   std::uniform_real_distribution<double> dis(0, 1000);
@@ -75,6 +75,7 @@ int main() {
       cout << "Mismatch at index " << i << endl;
       cout << "CPU: " << maxvalues2[i] << " " << minvalues2[i] << endl;
       cout << "GPU: " << maxvalues[i] << " " << minvalues[i] << endl;
+      return 1;
     }
   }
 

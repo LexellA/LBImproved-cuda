@@ -69,7 +69,6 @@ void demo(uint size)
         checkCudaStatus(cudaEventElapsedTime(&millisecondsTest, start, stop), "Failed to get elapsed time");
         totalMillisecondsTest += millisecondsTest;
 
-        std::cout << i <<std::endl;
         assert(newbest == newbestKernel);
 
         if (newbest < bestsofar || newbestKernel < bestsofar)
