@@ -25,6 +25,7 @@ add_test(NAME test_envelope COMMAND test_envelope)
 
 add_executable(test_dtw  src/include/dtw.h
                     src/dtw.cu
+                    src/include/dtw_origin.h
                     test/dtw_unit_test.cu)
 target_include_directories(test_dtw PRIVATE ${PROJECT_SOURCE_DIR}/src/include)
 target_compile_options(test_dtw PRIVATE $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:Debug>>:-G>)

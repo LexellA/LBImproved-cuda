@@ -1,4 +1,6 @@
 #include <vector>
+#include <chrono>
+#include "../src/include/dtw_origin.h"
 #include "../src/include/dtw.h"
 #include "dtw_origin.h"
 
@@ -35,10 +37,10 @@ void unit_test_1(){
   checkCudaErrors(cudaMemcpy(d_y, y.data(), y.size() * sizeof(double), cudaMemcpyHostToDevice));
 
   dtw mDTW(x.size(), 1);
+  Origin::dtw oDTW(x.size(), 1);
   mDTW.fastdynamic(d_x, d_y);
+  oDTW.fastdynamic(x ,y);
 
-  Origin::dtw mDTW_origin(x.size(), 1);
-  mDTW_origin.fastdynamic(x, y);
 }
 
 void unit_test_2(int size){
@@ -54,10 +56,38 @@ void unit_test_2(int size){
   checkCudaErrors(cudaMemcpy(d_w, w.data(), size * sizeof(double), cudaMemcpyHostToDevice));
 
   dtw mDTW(size ,size/10);
-  mDTW.fastdynamic(d_v, d_w);
+  Origin::dtw oDTW(size, size /10);
+  double answer;
 
-  Origin::dtw mDTW_origin(w.size(), w.size() / 10);
-  mDTW_origin.fastdynamic(v, w);
+  auto start = std::chrono::high_resolution_clock::now();
+  answer = mDTW.fastdynamic(d_v ,d_w);
+  auto end = std::chrono::high_resolution_clock::now();
+  std::cout << "GPU time: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+                   .count()
+            << "ms " 
+            << "fd: "
+            << answer << std::endl;
+
+  start = std::chrono::high_resolution_clock::now();
+  answer = mDTW.fastdynamic_SC(d_v ,d_w);
+  end = std::chrono::high_resolution_clock::now();
+  std::cout << "GPU time with CUDA Graph: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+                   .count()
+            << "ms " 
+            << "fd: "
+            << answer << std::endl;
+
+  start = std::chrono::high_resolution_clock::now();
+  answer = oDTW.fastdynamic(v ,w);
+  end = std::chrono::high_resolution_clock::now();
+  std::cout << "CPU time: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+                   .count()
+            << "ms " 
+            << "fd: "
+            << answer << std::endl;
 }
 
 
