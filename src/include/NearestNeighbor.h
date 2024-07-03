@@ -1,10 +1,11 @@
 #pragma once
 
-#include <vector>
 #include "dtw.h"
 
 class NearestNeighbor {
  public:
+  enum { BLOCK_SZ = 256 };
+  
   NearestNeighbor(double* v,unsigned int size, unsigned int constraint)
     : mDTW(size, constraint) {}
 
@@ -17,3 +18,9 @@ class NearestNeighbor {
  protected:
   dtw mDTW;
 };
+
+__global__ void reduceKernel(double *input, double *output, unsigned int n);
+
+__global__ void computeErrorKernel(const double *U, const double *L,
+                                   const double *candidate, double *errors,
+                                   unsigned int size);

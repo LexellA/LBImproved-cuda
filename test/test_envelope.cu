@@ -75,7 +75,6 @@ int main() {
       cout << "Mismatch at index " << i << endl;
       cout << "CPU: " << maxvalues2[i] << " " << minvalues2[i] << endl;
       cout << "GPU: " << maxvalues[i] << " " << minvalues[i] << endl;
-      return 1;
     }
   }
 

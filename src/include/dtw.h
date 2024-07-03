@@ -1,7 +1,8 @@
 #pragma once
 
-#include <vector>
 #include <iostream>
+#include <vector>
+
 #define checkCudaErrors(call) \
 do { \
     cudaError_t err = call; \

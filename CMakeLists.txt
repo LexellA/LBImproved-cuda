@@ -2,12 +2,16 @@ cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 project(LBImproved-cuda LANGUAGES CXX CUDA)
 
+set(CMAKE_CUDA_ARCHITECTURES 86)
+
 file(GLOB SOURCES ${PROJECT_SOURCE_DIR}/src/*.cu ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
 add_executable(LBImproved-cuda ${SOURCES})
 target_include_directories(LBImproved-cuda PRIVATE ${PROJECT_SOURCE_DIR}/src/include)
 
 target_compile_options(LBImproved-cuda PRIVATE $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:Debug>>:-G>)
+
+
 
 
 
@@ -30,6 +34,7 @@ add_executable(test_LB src/include/dtw.h
                         src/dtw.cu
                         src/LB_Keogh.cu
                         src/Envelope.cu
+                        src/NearestNeighbor.cu
                         test/test_LB.cu)
 target_include_directories(test_LB PRIVATE ${PROJECT_SOURCE_DIR}/src/include)
 target_compile_options(test_LB PRIVATE $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:Debug>>:-G>)

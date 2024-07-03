@@ -1,10 +1,7 @@
 #include <iostream>
-#include <vector>
 #include <cuda_runtime.h>
 #include <cassert>
 #include <chrono>
-#include <cmath>
-#include "dtw.h"
 #include "LB_Improved.h"
 
 // Helper function to check CUDA error status

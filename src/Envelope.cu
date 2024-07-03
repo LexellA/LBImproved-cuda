@@ -1,6 +1,5 @@
 #include <cuda_runtime.h>
 #include <cfloat>
-#include <cstdio>
 
 #include "Envelope.h"
 

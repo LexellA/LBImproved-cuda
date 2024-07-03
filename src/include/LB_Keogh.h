@@ -1,8 +1,5 @@
 #pragma once
 
-#include <vector>
-#include <cassert>
-
 #include "NearestNeighbor.h"
 
 class LB_Keogh : public NearestNeighbor {
@@ -11,7 +8,6 @@ class LB_Keogh : public NearestNeighbor {
   ~LB_Keogh();
 
   double test(const double* candidate);
-  double test_kernel(const double* candidate);
   double justlb(const double* candidate);
   double getLowestCost();
   int getNumberOfDTW() { return full_dtw; }
@@ -23,14 +19,11 @@ protected:
   int lb_keogh;
   int full_dtw;
   unsigned int size;
-  int mConstraint;
   double bestsofar;
-  double *V;
-  double *U;
-  double *L;
   double *V_K;
   double* U_K;
   double* L_K;
+  double *d_candidate, *d_errors, *d_result;
 };
 
 __global__ void reduceKernel(double *input, double *output, unsigned int n);
