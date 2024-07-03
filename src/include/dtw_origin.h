@@ -246,7 +246,6 @@ public:
       else if (candidate[i] < L[i])
         error += L[i] - candidate[i];
     }
-    std::cout << "org error: " << error << std::endl;
     if (error < bestsofar) {
       ++full_dtw;
       const double trueerror =

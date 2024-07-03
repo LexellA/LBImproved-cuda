@@ -1,5 +1,4 @@
 #include <cuda_runtime.h>
-#include <iostream>
 
 #include "NearestNeighbor.h"
 #include "dtw.h"
@@ -48,13 +47,20 @@ double LB_Improved::compute_sum(double *d_array, uint size) {
   int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
 
 
-  cudaMemset(d_result, 0, sizeof(double));
-  reduceKernel<<<blocksPerGrid, threadsPerBlock>>>(
+  cudaMemsetAsync(d_result, 0, sizeof(double), mStream);
+  reduceKernel<<<blocksPerGrid, threadsPerBlock,0, mStream>>>(
       d_array, d_result, size);
   // 从GPU复制最终结果回CPU
   double h_result;
-  cudaMemcpy(&h_result, d_result, sizeof(double), cudaMemcpyDeviceToHost);
-
+  cudaMemcpyAsync(&h_result, d_result, sizeof(double), cudaMemcpyDeviceToHost,
+                  mStream);
+  
+  cudaStreamEndCapture(mStream, &mGraph);
+  cudaGraphInstantiate(&mGraphExec, mGraph, NULL, NULL, 0);
+  cudaGraphLaunch(mGraphExec, mStream);
+  cudaStreamSynchronize(mStream);
+  cudaGraphExecDestroy(mGraphExec);
+  cudaGraphDestroy(mGraph);
   return h_result;
 }
 
@@ -62,24 +68,32 @@ double LB_Improved::test(const double *candidate)
 {
     ++lb_keogh;
     // 将数据从CPU复制到GPU
-    cudaMemcpy(d_candidate, candidate, size * sizeof(double), cudaMemcpyHostToDevice);
+    cudaStreamBeginCapture(mStream, cudaStreamCaptureModeGlobal);
+    
+    cudaMemcpyAsync(d_candidate, candidate, size * sizeof(double),
+                    cudaMemcpyHostToDevice, mStream);
+    
 
     // 调用computeErrorKernel，计算出每个点的误差errors
     int threadsPerBlock = LB_Improved::BLOCK_SZ;
     int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
 
-    computeErrorKernelBuffer<<<blocksPerGrid, threadsPerBlock>>>(
+    computeErrorKernelBuffer<<<blocksPerGrid, threadsPerBlock, 0, mStream>>>(
         U_K, L_K, d_candidate, d_errors, d_buffer, size);
 
     double error = compute_sum(d_errors, size);
 
-    // Continue with the rest of the test function
-    if (error < bestsofar)
-    {    // 第二次LB_Keogh
-        Envelope envelope(d_buffer, d_U2, d_L2, size, mConstraint);
-        envelope.compute();
+    
 
-        computeErrorKernel<<<blocksPerGrid, threadsPerBlock>>>(d_U2, d_L2, V_K, d_errors, size);
+    // Continue with the rest of the test function
+    if (error < bestsofar) {
+
+      // 第二次LB_Keogh
+        cudaStreamBeginCapture(mStream, cudaStreamCaptureModeGlobal);
+        Envelope envelope(d_buffer, d_U2, d_L2, size, mConstraint);
+        envelope.compute(mStream);
+
+        computeErrorKernel<<<blocksPerGrid, threadsPerBlock, 0, mStream>>>(d_U2, d_L2, V_K, d_errors, size);
 
         double error2 = compute_sum(d_errors, size);
 
@@ -87,13 +101,15 @@ double LB_Improved::test(const double *candidate)
 
         if (error2 < bestsofar)
         {
-            ++full_dtw;
-            const double trueerror = mDTW.fastdynamic(V_K, d_candidate);
+          ++full_dtw;
+          cudaStreamBeginCapture(mStream, cudaStreamCaptureModeGlobal);
+          const double trueerror = mDTW.fastdynamic(V_K, d_candidate, mStream, mGraph, mGraphExec);
 
-            if (trueerror < bestsofar)
-                bestsofar = trueerror;
+          if (trueerror < bestsofar) bestsofar = trueerror;
         }
     }
+
+    cudaStreamSynchronize(mStream);
 
     return bestsofar;
 }
@@ -107,38 +123,45 @@ LB_Improved::LB_Improved(double *v, unsigned int v_size,
       lb_keogh(0),
       full_dtw(0),
       bestsofar(dtw::INF),
-      mConstraint(constraint)
-{
-    cudaMalloc(&V_K, size * sizeof(double));
-    cudaMalloc(&U_K, size * sizeof(double));
-    cudaMalloc(&L_K, size * sizeof(double));
+      mConstraint(constraint),
+      mGraphExec(NULL)
+      {
 
-    cudaMalloc(&d_candidate, size * sizeof(double));
-    cudaMalloc(&d_errors, size * sizeof(double));
-    cudaMalloc(&d_buffer, size * sizeof(double));
-    cudaMalloc(&d_U2, size * sizeof(double));
-    cudaMalloc(&d_L2, size * sizeof(double));
+    cudaStreamCreate(&mStream);
 
-    cudaMalloc(&d_result, sizeof(double));
+    cudaMallocAsync(&V_K, size * sizeof(double), mStream);
+    cudaMallocAsync(&U_K, size * sizeof(double), mStream);
+    cudaMallocAsync(&L_K, size * sizeof(double), mStream);
 
-    cudaMemcpy(V_K, v, size * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMallocAsync(&d_candidate, size * sizeof(double), mStream);
+    cudaMallocAsync(&d_errors, size * sizeof(double), mStream);
+    cudaMallocAsync(&d_buffer, size * sizeof(double), mStream);
+    cudaMallocAsync(&d_U2, size * sizeof(double), mStream);
+    cudaMallocAsync(&d_L2, size * sizeof(double), mStream);
+
+    cudaMallocAsync(&d_result, sizeof(double), mStream);
+
+    cudaMemcpyAsync(V_K, v, size * sizeof(double), cudaMemcpyHostToDevice,
+                    mStream);
 
     Envelope envelope(V_K, U_K, L_K, size, mConstraint);
-    envelope.compute();
+    envelope.compute(mStream);
+    cudaStreamSynchronize(mStream);
 }
 
 LB_Improved::~LB_Improved()
 {
-    cudaFree(V_K);
-    cudaFree(U_K);
-    cudaFree(L_K);
+  cudaFreeAsync(V_K, mStream);
+  cudaFreeAsync(U_K, mStream);
+  cudaFreeAsync(L_K, mStream);
 
-    cudaFree(d_candidate);
-    cudaFree(d_errors);
-    cudaFree(d_buffer);
+  cudaFreeAsync(d_candidate, mStream);
+  cudaFreeAsync(d_errors, mStream);
+  cudaFreeAsync(d_buffer, mStream);
 
-    cudaFree(d_U2);
-    cudaFree(d_L2);
+  cudaFreeAsync(d_U2, mStream);
+  cudaFreeAsync(d_L2, mStream);
 
-    cudaFree(d_result);
+  cudaFreeAsync(d_result, mStream);
+  cudaStreamDestroy(mStream);
 }

@@ -28,6 +28,10 @@ protected:
   double *d_candidate, *d_errors, *d_buffer;
   double *d_U2, *d_L2;
   double *d_result;
+
+  cudaStream_t mStream;
+  cudaGraph_t mGraph;
+  cudaGraphExec_t mGraphExec;
 };
 
 __global__ void computeErrorKernelBuffer(const double *U, const double *L,

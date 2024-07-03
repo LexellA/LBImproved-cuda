@@ -56,8 +56,8 @@ __global__ void compute_DTW(const double* v, const double* w, double* mGamma,
     mGamma[i * N + j] = best + fabs(v[i] - w[j]);
 }
 
-
-double dtw::fastdynamic(double* v, double* w) {
+double dtw::fastdynamic(double* v, double* w, cudaStream_t& stream,
+                        cudaGraph_t& graph, cudaGraphExec_t& graphExec) {
   if(!fast)
     return 0;
 
@@ -66,12 +66,20 @@ double dtw::fastdynamic(double* v, double* w) {
   // 波前从0开始一直到2n  
   for(int wavefront = 0 ;wavefront <= 2 * (N - 1) ;wavefront++){
     int NBlks = ceil((float)(wavefront+1) / K); // 计算所需的块数
-    compute_DTW<<<NBlks,K>>>(v ,w ,mGamma ,wavefront ,mConstraint ,mN);
+    compute_DTW<<<NBlks,K, 0, stream>>>(v ,w ,mGamma ,wavefront ,mConstraint ,mN);
   }
 
   double result;
-  checkCudaErrors(cudaMemcpy(&result, mGamma + (mN - 1) * mN + mN - 1,
-                             sizeof(double), cudaMemcpyDeviceToHost));
+  checkCudaErrors(cudaMemcpyAsync(&result, mGamma + (mN - 1) * mN + mN - 1,
+                                  sizeof(double), cudaMemcpyDeviceToHost,
+                                  stream));
+
+  cudaStreamEndCapture(stream, &graph);
+  cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0);
+  cudaGraphLaunch(graphExec, stream);
+  cudaStreamSynchronize(stream);
+  cudaGraphDestroy(graph);
+  cudaGraphExecDestroy(graphExec);
   return result;
 }
 
