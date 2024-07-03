@@ -18,9 +18,9 @@ class dtw {
   enum { INF = 1000000000 ,fast = true};
   dtw(unsigned int n, unsigned int constraint);
   ~dtw();
+  double fastdynamic(double* v, double* w);
   double fastdynamic(double* v, double* w, cudaStream_t& stream, cudaGraph_t& graph, cudaGraphExec_t& graphExec);
   double fastdynamic_SC(double* v, double* w);
-  double fastdynamic_origin(const std::vector<double> &v, const std::vector<double> &w);
 
  private:
   double* mGamma;

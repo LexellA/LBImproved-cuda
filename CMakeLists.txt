@@ -44,6 +44,7 @@ add_test(NAME test_LB COMMAND test_LB)
 add_executable(test_LBImproved 
                         src/dtw.cu
                         src/LB_Improved.cu
+                        src/NearestNeighbor.cu
                         src/LB_Keogh.cu
                         src/Envelope.cu
                         test/test_LBImproved.cu)

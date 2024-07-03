@@ -6,6 +6,7 @@ class Envelope {
            unsigned int size, unsigned int constraint);
   ~Envelope();
   void compute(cudaStream_t& stream);
+  void compute();
 
  private:
   double *d_array;

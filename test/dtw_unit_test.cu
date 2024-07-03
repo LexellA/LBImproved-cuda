@@ -1,5 +1,6 @@
 #include <vector>
 #include "../src/include/dtw.h"
+#include "dtw_origin.h"
 
 std::vector<double> get_rand_seq(uint size) {
   std::vector<double> data(size);
@@ -35,7 +36,9 @@ void unit_test_1(){
 
   dtw mDTW(x.size(), 1);
   mDTW.fastdynamic(d_x, d_y);
-  mDTW.fastdynamic_origin(x ,y);
+
+  Origin::dtw mDTW_origin(x.size(), 1);
+  mDTW_origin.fastdynamic(x, y);
 }
 
 void unit_test_2(int size){
@@ -50,10 +53,11 @@ void unit_test_2(int size){
   checkCudaErrors(cudaMemcpy(d_v, v.data(), size * sizeof(double), cudaMemcpyHostToDevice));
   checkCudaErrors(cudaMemcpy(d_w, w.data(), size * sizeof(double), cudaMemcpyHostToDevice));
 
-  dtw DTW(size ,size/10);
-  DTW.fastdynamic(d_v ,d_w);
-  // DTW.fastdynamic_SC(d_v ,d_w);
-  DTW.fastdynamic_origin(v ,w);
+  dtw mDTW(size ,size/10);
+  mDTW.fastdynamic(d_v, d_w);
+
+  Origin::dtw mDTW_origin(w.size(), w.size() / 10);
+  mDTW_origin.fastdynamic(v, w);
 }
 
 

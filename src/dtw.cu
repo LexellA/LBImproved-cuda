@@ -83,6 +83,24 @@ double dtw::fastdynamic(double* v, double* w, cudaStream_t& stream,
   return result;
 }
 
+double dtw::fastdynamic(double* v, double* w) {
+  if (!fast) return 0;
+
+  int N = mN;
+  int K = 32;  // 每个块的线程数
+  // 波前从0开始一直到2n
+  for (int wavefront = 0; wavefront <= 2 * (N - 1); wavefront++) {
+    int NBlks = ceil((float)(wavefront + 1) / K);  // 计算所需的块数
+    compute_DTW<<<NBlks, K>>>(v, w, mGamma, wavefront, mConstraint,
+                                         mN);
+  }
+
+  double result;
+  checkCudaErrors(cudaMemcpy(&result, mGamma + (mN - 1) * mN + mN - 1,
+                                  sizeof(double), cudaMemcpyDeviceToHost));
+  return result;
+}
+
 // ----------------------------------加上流捕获------------------------------------------------ //
 double dtw::fastdynamic_SC(double* v, double* w) {
     if (!fast)
