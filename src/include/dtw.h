@@ -20,7 +20,6 @@ class dtw {
   ~dtw();
   double fastdynamic(double* v, double* w);
   double fastdynamic_SC(double* v, double* w);
-  double fastdynamic_origin(const std::vector<double> &v, const std::vector<double> &w);
 
  private:
   double* mGamma;

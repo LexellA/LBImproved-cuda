@@ -1,4 +1,6 @@
 #include <vector>
+#include <chrono>
+#include "../src/include/dtw_origin.h"
 #include "../src/include/dtw.h"
 
 std::vector<double> get_rand_seq(uint size) {
@@ -34,8 +36,9 @@ void unit_test_1(){
   checkCudaErrors(cudaMemcpy(d_y, y.data(), y.size() * sizeof(double), cudaMemcpyHostToDevice));
 
   dtw mDTW(x.size(), 1);
+  Origin::dtw oDTW(x.size(), 1);
   mDTW.fastdynamic(d_x, d_y);
-  mDTW.fastdynamic_origin(x ,y);
+  oDTW.fastdynamic(x ,y);
 }
 
 void unit_test_2(int size){
@@ -50,10 +53,39 @@ void unit_test_2(int size){
   checkCudaErrors(cudaMemcpy(d_v, v.data(), size * sizeof(double), cudaMemcpyHostToDevice));
   checkCudaErrors(cudaMemcpy(d_w, w.data(), size * sizeof(double), cudaMemcpyHostToDevice));
 
-  dtw DTW(size ,size/10);
-  DTW.fastdynamic(d_v ,d_w);
-  // DTW.fastdynamic_SC(d_v ,d_w);
-  DTW.fastdynamic_origin(v ,w);
+  dtw mDTW(size ,size/10);
+  Origin::dtw oDTW(size, size /10);
+  double answer;
+
+  auto start = std::chrono::high_resolution_clock::now();
+  answer = mDTW.fastdynamic(d_v ,d_w);
+  auto end = std::chrono::high_resolution_clock::now();
+  std::cout << "GPU time: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+                   .count()
+            << "ms " 
+            << "fd: "
+            << answer << std::endl;
+
+  start = std::chrono::high_resolution_clock::now();
+  answer = mDTW.fastdynamic_SC(d_v ,d_w);
+  end = std::chrono::high_resolution_clock::now();
+  std::cout << "GPU time with CUDA Graph: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+                   .count()
+            << "ms " 
+            << "fd: "
+            << answer << std::endl;
+
+  start = std::chrono::high_resolution_clock::now();
+  answer = oDTW.fastdynamic(v ,w);
+  end = std::chrono::high_resolution_clock::now();
+  std::cout << "CPU time: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+                   .count()
+            << "ms " 
+            << "fd: "
+            << answer << std::endl;
 }
 
 
